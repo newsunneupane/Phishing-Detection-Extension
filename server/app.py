@@ -27,7 +27,29 @@ def not_found(e):
 
 @app.errorhandler(500)
 def server_error(e):
-    return jsonify({'error': 'Internal server error'}), 500
+    return jsonify({'error': 'Internal server error', 'message': str(e)}), 500
+
+@app.route('/health', methods=['GET'])
+def health():
+    try:
+        conn = get_db_connection()
+        conn.ping(reconnect=True)
+        conn.close()
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected',
+            'env_vars': {
+                'DB_HOST': 'Set' if os.getenv('DB_HOST') else 'Missing',
+                'DB_USER': 'Set' if os.getenv('DB_USER') else 'Missing',
+                'DB_NAME': 'Set' if os.getenv('DB_NAME') else 'Missing'
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'database': 'disconnected',
+            'error': str(e)
+        }), 500
 
 @app.route('/predict', methods=['POST'])
 def predict():

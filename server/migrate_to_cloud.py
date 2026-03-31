@@ -52,6 +52,14 @@ def migrate():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        cloud_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ml_models (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                model_data LONGBLOB NOT NULL,
+                version INT DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
         # 4. Fetch from Local
         local_cursor.execute("SELECT * FROM websites")

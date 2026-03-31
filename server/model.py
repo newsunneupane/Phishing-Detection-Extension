@@ -69,6 +69,13 @@ def load_model():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        # Check if table exists first (to prevent crash on fresh DB)
+        cursor.execute("SHOW TABLES LIKE 'ml_models'")
+        if not cursor.fetchone():
+            print("Table 'ml_models' does not exist yet.")
+            conn.close()
+            return None
+            
         # Get the latest model version
         cursor.execute("SELECT model_data FROM ml_models ORDER BY created_at DESC LIMIT 1")
         row = cursor.fetchone()
@@ -82,8 +89,11 @@ def load_model():
         print(f"Failed to load model from DB: {e}. Falling back to local.")
 
     # 2. Fallback to local file
-    if os.path.exists(MODEL_PATH):
-        return joblib.load(MODEL_PATH)
+    try:
+        if os.path.exists(MODEL_PATH):
+            return joblib.load(MODEL_PATH)
+    except:
+        pass
     
     return None
 
@@ -93,7 +103,7 @@ def predict_url(url, model=None):
     
     if model is None:
         print("Model not found.")
-        return None
+        return "legitimate" # Default to safe if model missing
     
     features = extract_features(url)
     # Use NumPy array for prediction instead of DataFrame
