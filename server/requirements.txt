@@ -1,8 +1,6 @@
 flask
 flask-cors
 mysql-connector-python
-pandas
 scikit-learn
 joblib
 numpy
-xgboost

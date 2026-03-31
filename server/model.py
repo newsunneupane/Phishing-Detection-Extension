@@ -1,8 +1,8 @@
 import os
 import joblib
-import pandas as pd
 import io
 import mysql.connector
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from features import extract_features
 
@@ -34,10 +34,9 @@ def train_model(data):
         features_list.append(list(features.values()))
         labels.append(entry['label'])
     
-    # Create DataFrame
-    feature_names = list(extract_features("http://example.com").keys())
-    X = pd.DataFrame(features_list, columns=feature_names)
-    y = labels
+    # Create NumPy array instead of DataFrame to save memory/space
+    X = np.array(features_list)
+    y = np.array(labels)
     
     # Train Random Forest model
     model = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -97,9 +96,10 @@ def predict_url(url, model=None):
         return None
     
     features = extract_features(url)
-    features_df = pd.DataFrame([list(features.values())], columns=list(features.keys()))
+    # Use NumPy array for prediction instead of DataFrame
+    features_array = np.array([list(features.values())])
     
-    prediction = model.predict(features_df)[0]
+    prediction = model.predict(features_array)[0]
     return "phishing" if prediction == 1 else "legitimate"
 
 if __name__ == "__main__":

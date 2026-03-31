@@ -3,7 +3,6 @@ from flask_cors import CORS
 import mysql.connector
 import joblib
 import os
-import pandas as pd
 from model import predict_url, train_model, load_model
 from features import extract_features
 
