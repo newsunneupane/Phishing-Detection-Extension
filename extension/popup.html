@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing Detection</title>
+    <style>
+        body {
+            width: 250px;
+            padding: 15px;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+        h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .vote-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .phishing { background-color: #e74c3c; color: white; }
+        .phishing:hover { background-color: #c0392b; }
+        .potential { background-color: #f39c12; color: white; }
+        .potential:hover { background-color: #d35400; }
+        .legitimate { background-color: #2ecc71; color: white; }
+        .legitimate:hover { background-color: #27ae60; }
+        #status-msg {
+            margin-top: 15px;
+            font-size: 0.9em;
+            text-align: center;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h2>Rate Current Website</h2>
+    <p id="current-url" style="font-size: 0.8em; color: #777; word-break: break-all;"></p>
+    
+    <div style="margin: 15px 0;">
+        <label style="font-size: 0.9em; font-weight: bold;">Phishing Probability:</label>
+        <input type="range" id="popup-slider" min="0" max="100" value="50" style="width: 100%;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #555;">
+            <span>Safe</span>
+            <span id="popup-slider-val">50%</span>
+            <span>Phishing</span>
+        </div>
+    </div>
+
+    <button class="vote-btn phishing" id="btn-phishing">Phishing Site</button>
+    <button class="vote-btn potential" id="btn-potential">Potential Phishing</button>
+    <button class="vote-btn legitimate" id="btn-legitimate">Legitimate Site</button>
+    <div id="status-msg"></div>
+    <script src="popup.js"></script>
+</body>
+</html>

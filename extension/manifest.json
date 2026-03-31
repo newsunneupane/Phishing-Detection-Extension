@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Phishing Detection with ML",
+  "version": "1.0",
+  "description": "Protects against phishing websites using an ML model and user feedback.",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "webNavigation",
+    "notifications",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1:5001/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
