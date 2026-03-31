@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import mysql.connector
+import pymysql
+import pymysql.cursors
 import joblib
 import os
 from model import predict_url, train_model, load_model
@@ -15,11 +16,12 @@ DB_CONFIG = {
     'user': os.getenv('DB_USER', 'root'),
     'password': os.getenv('DB_PASS', ''),
     'database': os.getenv('DB_NAME', 'phishing_db'),
-    'port': int(os.getenv('DB_PORT', 3306))
+    'port': int(os.getenv('DB_PORT', 3306)),
+    'cursorclass': pymysql.cursors.DictCursor # This replaces dictionary=True
 }
 
 def get_db_connection():
-    return mysql.connector.connect(**DB_CONFIG)
+    return pymysql.connect(**DB_CONFIG)
 
 @app.errorhandler(404)
 def not_found(e):
@@ -68,20 +70,19 @@ def predict():
         print(f"Checking URL (normalized): {url_no_proto}")
         
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        # Check if URL is in database (matching both http and https)
-        query = """
-            SELECT label FROM websites 
-            WHERE url = %s OR url = %s 
-            OR url = %s OR url = %s
-        """
-        params = (
-            f"http://{url_no_proto}", f"http://{url_no_proto}/",
-            f"https://{url_no_proto}", f"https://{url_no_proto}/"
-        )
-        cursor.execute(query, params)
-        result = cursor.fetchone()
+        with conn.cursor() as cursor: # Use 'with' for auto-closing
+            # Check if URL is in database (matching both http and https)
+            query = """
+                SELECT label FROM websites 
+                WHERE url = %s OR url = %s 
+                OR url = %s OR url = %s
+            """
+            params = (
+                f"http://{url_no_proto}", f"http://{url_no_proto}/",
+                f"https://{url_no_proto}", f"https://{url_no_proto}/"
+            )
+            cursor.execute(query, params)
+            result = cursor.fetchone()
         
         if result:
             label = result['label']
@@ -120,43 +121,41 @@ def feedback():
         return jsonify({'error': 'URL and vote are required'}), 400
     
     conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # 1. Update the websites table (or insert if not exists)
-    cursor.execute("""
-        INSERT INTO websites (url, label, phishing_percentage) 
-        VALUES (%s, %s, %s) 
-        ON DUPLICATE KEY UPDATE 
-            label = VALUES(label),
-            phishing_percentage = VALUES(phishing_percentage)
-    """, (url, vote, percentage))
-    
-    # 2. Log user vote to reports table
-    cursor.execute("INSERT INTO reports (url, vote, percentage) VALUES (%s, %s, %s)", (url, vote, percentage))
-    conn.commit()
-    
-    # 3. Check for model retraining (after 100 new phishing reports)
-    cursor.execute("SELECT COUNT(*) FROM reports WHERE is_trained = FALSE AND vote IN ('phishing', 'potential phishing')")
-    new_reports_count = cursor.fetchone()[0]
-    
-    if new_reports_count >= 100:
-        print(f"Triggering model retraining with {new_reports_count} new reports...")
-        retrain_model_from_db()
+    with conn.cursor() as cursor:
+        # 1. Update the websites table (or insert if not exists)
+        cursor.execute("""
+            INSERT INTO websites (url, label, phishing_percentage) 
+            VALUES (%s, %s, %s) 
+            ON DUPLICATE KEY UPDATE 
+                label = VALUES(label),
+                phishing_percentage = VALUES(phishing_percentage)
+        """, (url, vote, percentage))
         
-        # Mark reports as trained
-        cursor.execute("UPDATE reports SET is_trained = TRUE WHERE is_trained = FALSE")
+        # 2. Log user vote to reports table
+        cursor.execute("INSERT INTO reports (url, vote, percentage) VALUES (%s, %s, %s)", (url, vote, percentage))
         conn.commit()
+        
+        # 3. Check for model retraining (after 100 new phishing reports)
+        cursor.execute("SELECT COUNT(*) as count FROM reports WHERE is_trained = FALSE AND vote IN ('phishing', 'potential phishing')")
+        new_reports_count = cursor.fetchone()['count']
+        
+        if new_reports_count >= 100:
+            print(f"Triggering model retraining with {new_reports_count} new reports...")
+            retrain_model_from_db()
+            
+            # Mark reports as trained
+            cursor.execute("UPDATE reports SET is_trained = TRUE WHERE is_trained = FALSE")
+            conn.commit()
     
     conn.close()
     return jsonify({'message': 'Feedback received. Thank you!', 'retrain_triggered': new_reports_count >= 100})
 
 def retrain_model_from_db():
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    # Fetch all websites with labels for retraining
-    cursor.execute("SELECT url, label FROM websites")
-    rows = cursor.fetchall()
+    with conn.cursor() as cursor:
+        # Fetch all websites with labels for retraining
+        cursor.execute("SELECT url, label FROM websites")
+        rows = cursor.fetchall()
     conn.close()
     
     # Format data for training
@@ -173,10 +172,10 @@ if __name__ == '__main__':
     # Initial model training if it doesn't exist
     model = load_model()
     if model is None:
-        print("No model found locally or on S3. Performing initial training...")
+        print("No model found locally or on Cloud. Performing initial training...")
         try:
             retrain_model_from_db()
         except Exception as e:
-            print(f"Initial training failed: {e}. Ensure MySQL is running.")
+            print(f"Initial training failed: {e}. Ensure Cloud DB is configured.")
             
     app.run(host='127.0.0.1', port=5001, debug=True)

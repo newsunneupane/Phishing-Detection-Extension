@@ -1,7 +1,8 @@
 import os
 import joblib
 import io
-import mysql.connector
+import pymysql
+import pymysql.cursors
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from features import extract_features
@@ -10,12 +11,13 @@ MODEL_PATH = 'phishing_model.joblib'
 
 # Reuse DB config from environment or defaults
 def get_db_connection():
-    return mysql.connector.connect(
+    return pymysql.connect(
         host=os.getenv('DB_HOST', 'localhost'),
         user=os.getenv('DB_USER', 'root'),
         password=os.getenv('DB_PASS', ''),
         database=os.getenv('DB_NAME', 'phishing_db'),
-        port=int(os.getenv('DB_PORT', 3306))
+        port=int(os.getenv('DB_PORT', 3306)),
+        cursorclass=pymysql.cursors.DictCursor
     )
 
 def train_model(data):

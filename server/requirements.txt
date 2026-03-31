@@ -1,6 +1,6 @@
 flask
 flask-cors
-mysql-connector-python
+pymysql
 scikit-learn
 joblib
 numpy
